@@ -23,7 +23,7 @@ int LSH(int dim, int ndata, double *data,int m, double W, double **h, double *b,
             }
             hashval[j] = (int)floor(((res-b[j])/W));
         }
-        //adding the hashvalues to cluster_hashval if 
+        //adding the hashvalues to cluster_hashval
         if(nclusters == 0){
             cluster_hashval[nclusters] = (int*)malloc(m*sizeof(int));
             for(int c=0;c<m;c++){
@@ -57,6 +57,20 @@ int LSH(int dim, int ndata, double *data,int m, double W, double **h, double *b,
             }
         }
     }
+    // //sort the data
+    // for(int i=0;i<ndata-1;i++){
+    //     int minVal = i;
+    //     for(int j=i+1;j<ndata;j++){
+    //         if(cluster_assign[j] < cluster_assign[minVal]){
+    //             minVal = j;
+    //         }
+    //     }
+    //     for(int p=0;p<dim;p++){
+    //         double temp = data[(i*dim)+p];
+    //         data[(i*dim)+p] = data[(minVal*dim)+p];
+    //         data[(minVal*dim)+p] = temp;
+    //     }
+    // }
     cluster_ass = cluster_assign;
     return nclusters;
 }
@@ -118,7 +132,7 @@ void closestPoint(int cluster,int ndata,double *query_pt,int dim,double *data){
             if(cluster_ass[i] == cluster){
                 double sum=(double)0;
                 int iterator = 0;
-                for(int j=i;j<i+dim;j++){
+                for(int j=i*dim;j<(i*dim)+dim;j++){
                     sum = sum + (pow((query_pt[iterator]-data[j]),2));
                     iterator = iterator+1;
                     printf("%f ",data[j]);
@@ -126,7 +140,7 @@ void closestPoint(int cluster,int ndata,double *query_pt,int dim,double *data){
                 printf(" Distance from query pt-> %f ",sqrt(sum));
                 if(sqrt(sum) < minSum){
                     minSum = sum;
-                    closest_point = i;
+                    closest_point = i*dim;
                 }
                 printf("\n");
             }
@@ -138,10 +152,10 @@ void closestPoint(int cluster,int ndata,double *query_pt,int dim,double *data){
         printf("\n");
 }
 int main(){
-    int ndata = 1000000;
+    int ndata = 20;
     int dim = 16;
     int m = 5;
-    double W = 0.3;
+    double W = 0.5;
     double *b  = malloc((m)*sizeof(double));
     double *data = malloc((ndata*dim)*sizeof(double));
     double **h = (double**)malloc(m*sizeof(double*));
@@ -157,8 +171,13 @@ int main(){
     for(int i=0; i< ndata*dim; i++)
     {
         data[i] = ((double)rand()/(RAND_MAX));
+        if(i%dim == 0){
+            printf("\n");
+        }
+        printf("%f ",data[i]);
     }
-
+    printf("##################################################");
+    //print data
     for(int i=0;i<dim;i++){
         query_pt[i] = ((double)rand()/(RAND_MAX));
     }
