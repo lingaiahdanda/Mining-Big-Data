@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include<math.h>
 #include<float.h>
+
 int nclusters = 0;
 int LSH(int dim, int ndata, double *data,int m, double W, double **h, double *b,int *cluster_start, int *cluster_size, int **cluster_hashval,int *cluster_assign);
 int search_LSH(int dim, int ndata, double *data,int m, double W, double **h, double *b,int nclusters, int *cluster_start, int *cluster_size, int **cluster_hashval,double *query_pt, double *result_pt,int *cluster_assign) ;
-void closestPoint(int cluster,int ndata,double *query_pt,int dim,double *data,int *cluster_start,int * cluster_size,int *cluster_assign);
+void closestPoint(int cluster,int ndata,double *query_pt,double *result_pt,int dim,double *data,int *cluster_start,int * cluster_size,int *cluster_assign);
 
 int LSH(int dim, int ndata, double *data,int m, double W, double **h, double *b,int *cluster_start, int *cluster_size, int **cluster_hashval,int *cluster_assign){
     //iterate all points
@@ -72,18 +73,7 @@ int LSH(int dim, int ndata, double *data,int m, double W, double **h, double *b,
         cluster_assign[i] = cluster_assign[minVal];
         cluster_assign[minVal] = temp;
     }
-    // printf("The data after sort is\n");
-    // for(int i=0; i< ndata*dim; i++)
-    // {
-    //     if(i%dim == 0){
-    //         printf("\n");
-    //     }
-    //     printf("%f ",data[i]);
-    // }
-    int cls_size[nclusters];
-    int cls_start[nclusters];
-    cluster_size = malloc(nclusters*sizeof(int));
-    cluster_start= malloc(nclusters*sizeof(int));
+    //setting the cluster start and cluster size arrays
     int count = 1;
     int t=1;
     cluster_start[0] = 0;
@@ -98,21 +88,6 @@ int LSH(int dim, int ndata, double *data,int m, double W, double **h, double *b,
             t=t+1;
         }
     }
-    // cluster_start = cls_start;
-    // cluster_size = cls_size;
-
-    // printf("\ncluster assign array---------");
-    // for(int i=0;i<ndata;i++){
-    //     printf("%d ", cluster_assign[i]);
-    // }
-    // printf("\n cluster start Array--------");
-    // for(int i=0;i<nclusters;i++){
-    //     printf("%d ", cluster_start[i]);
-    // }
-    // printf("\ncluster size Arry-----");
-    // for(int i=0;i<nclusters;i++){
-    //     printf("%d ", cluster_size[i]);
-    // }
     return nclusters;
 }
 //searching the points
@@ -126,7 +101,7 @@ int search_LSH(int dim, int ndata, double *data,int m, double W, double **h, dou
         }
         resHashVal[i] = (int)floor(((res-b[i])/W));
     }
-    //search the cluster
+    //finding  the cluster where query point belongs to
     int cluster;
     int isClusterFound = 0;
     for(int i=0;i<nclusters;i++){
@@ -144,8 +119,10 @@ int search_LSH(int dim, int ndata, double *data,int m, double W, double **h, dou
     }
     //the closest points in the cluster are
     if(isClusterFound){
-        closestPoint(cluster,ndata,query_pt,dim,data,cluster_start,cluster_size,cluster_assign);
+        // finding closest point in the cluster
+        closestPoint(cluster,ndata,query_pt,result_pt,dim,data,cluster_start,cluster_size,cluster_assign);
     }else{
+        // case where no cluster found, finding the closest cluster and the closest point in that closest cluster
         double minSum = DBL_MAX;
         int closest_cluster;
         for(int i=0;i<nclusters;i++){
@@ -159,62 +136,60 @@ int search_LSH(int dim, int ndata, double *data,int m, double W, double **h, dou
             }
         }
         printf("\nNo cluster found\nThe closest cluster is %d\n",closest_cluster);
-        closestPoint(closest_cluster,ndata,query_pt,dim,data,cluster_start,cluster_size,cluster_assign);
+        closestPoint(closest_cluster,ndata,query_pt,result_pt,dim,data,cluster_start,cluster_size,cluster_assign);
     }
 }
 
 //find closest point
-void closestPoint(int cluster,int ndata,double *query_pt,int dim,double *data,int *cluster_start,int * cluster_size,int *cluster_assign){
+void closestPoint(int cluster,int ndata,double *query_pt, double *result_pt,int dim,double *data,int *cluster_start,int *cluster_size,int *cluster_assign){
     double minSum = DBL_MAX;
     int closest_point;
     printf("The query point belongs to the cluster %d ", cluster);
-    printf("\nThe points in the cluster are:-\n");
-    for(int i=0;i<ndata;i++){
-        if(cluster_assign[i] == cluster){
-                double sum=(double)0;
-                int iterator = 0;
-                for(int j=i*dim;j<(i*dim)+dim;j++){
-                    sum = sum + (pow((query_pt[iterator]-data[j]),2));
-                    iterator = iterator+1;
-                    printf("%f ",data[j]);
-                }
-                printf(" Distance from query pt-> %f ",sqrt(sum));
-                if(sqrt(sum) < minSum){
-                    minSum = sum;
-                    closest_point = i;
-                }
-                printf("\n");
-            }
+    // printf("\nThe points in the cluster are:-\n");
+    for(int i=cluster_start[cluster];i<cluster_start[cluster]+(cluster_size[cluster]*dim);i=i+dim){
+        double sum=(double)0;
+        int iterator = 0;
+        for(int j=i;j<i+dim;j++){
+            sum = sum + (pow((query_pt[iterator]-data[j]),2));
+            iterator = iterator+1;
+            // printf("%f ",data[j]);
+        }
+        // printf(" Distance from query pt-> %f ",sqrt(sum));
+        if(sqrt(sum) < minSum){
+            minSum = sqrt(sum);
+            closest_point = i;
+        }
+        // printf("\n");
     }
-    printf("The closest point is :-\n");
-    for(int j=closest_point*dim;j<(closest_point*dim)+dim;j++){
-        printf("%f ",data[j]);
+    int k=0;
+    for(int j=closest_point;j<closest_point+dim;j++){
+        query_pt[k] = data[j];
+        k=k+1;
     }
-    printf("\n");
 }
 int main(){
-    int ndata = 100000;
+    int ndata = 1000;   // max = 1000000
     int dim = 16;
     int m = 5;
-    double W = 0.5;
+    double W = 0.3;
     double *b  = malloc((m)*sizeof(double));
     double *data = malloc((ndata*dim)*sizeof(double));
     double **h = (double**)malloc(m*sizeof(double*));
     int **cluster_hashval = (int**)malloc(ndata*sizeof(int*));
     int *cluster_assign = malloc((ndata)*sizeof(int));
-    int *cluster_size;
-    int *cluster_start;
+    int *cluster_size = (int *)calloc(ndata,sizeof(int));
+    int *cluster_start = (int *)calloc(ndata,sizeof(int));
     double *query_pt = malloc(dim*sizeof(double));
     double *result_pt = malloc(dim*sizeof(double));
     double centroid[dim];
     for(int i=0;i<m;i++){
         h[i] = (double*)malloc(dim*sizeof(double));
     }
+    //generating the dataset
     for(int i=0; i< ndata*dim; i++)
     {
         data[i] = ((double)rand()/(RAND_MAX));
     }
-    //print data
     for(int i=0;i<dim;i++){
         query_pt[i] = ((double)rand()/(RAND_MAX));
     }
@@ -229,14 +204,6 @@ int main(){
             h[i][k] = h[i][k]/sqrt(sum);
         }
     }
-    // //print random vectors
-    // for(int i=0;i<m;i++){
-    //     for(int j=0;j<dim;j++){
-    //         printf("%f ",h[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-
     //find centroid
     for(int i=0;i<dim;i++){
         double res = (double)0;
@@ -254,10 +221,12 @@ int main(){
         }
         b[i] = res;
     }
-    //print b array
-    // for(int i=0;i<m;i++){
-    //     printf("%f ",b[i]);
-    // }
-    printf("The number of clusters are -----------%d\n",LSH(dim,ndata,data,m,W,h,b,cluster_start,cluster_start,cluster_hashval,cluster_assign));
+    //calling LSH and printing number of clusters
+    printf("\nThe number of clusters are -----------%d\n",LSH(dim,ndata,data,m,W,h,b,cluster_start,cluster_size,cluster_hashval,cluster_assign));
     search_LSH(dim,ndata,data,m,W,h,b,nclusters,cluster_start,cluster_size,cluster_hashval,query_pt,result_pt,cluster_assign);
+    // printing the result point
+    printf("\nThe result point is\n");
+    for(int i=0;i<dim;i++){
+        printf("%f ",query_pt[i]);
+    }
 }
